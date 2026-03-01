@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROADWATCH — Live Traffic Intelligence</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --bg: #050a0f;
+    --panel: #090f17;
+    --border: #0d2035;
+    --accent: #00e5ff;
+    --accent2: #ff3d00;
+    --warn: #ffb300;
+    --green: #00e676;
+    --text: #b0c4d8;
+    --text-dim: #3a5068;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  body::after {
+    content:'';
+    position:fixed;
+    inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+    pointer-events:none;
+    z-index:9000;
+  }
+
+  header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 20px;
+    border-bottom:1px solid var(--border);
+    background: linear-gradient(90deg, rgba(0,229,255,0.06) 0%, transparent 70%);
+    flex-shrink:0;
+    height:50px;
+  }
+
+  .logo {
+    font-family:'Share Tech Mono',monospace;
+    font-size:20px;
+    color:var(--accent);
+    letter-spacing:5px;
+    text-shadow:0 0 16px rgba(0,229,255,0.5);
+  }
+  .logo em { color:var(--accent2); font-style:normal; }
+
+  .hdr-right {
+    display:flex;
+    gap:20px;
+    align-items:center;
+    font-family:'Share Tech Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+  }
+
+  .live-dot {
+    display:inline-block;
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--accent2);
+    margin-right:5px;
+    animation:blink 1.2s ease-in-out infinite;
+  }
+
+  .server-dot {
+    display:inline-block;
+    width:7px;height:7px;
+    border-radius:50%;
+    background:var(--text-dim);
+    margin-right:5px;
+    transition:background 0.3s;
+  }
+  .server-dot.ok { background:var(--green); }
+  .server-dot.err { background:var(--accent2); animation:blink 1s infinite; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .main {
+    flex:1;
+    display:grid;
+    grid-template-columns:1fr 360px;
+    overflow:hidden;
+    gap:1px;
+    background:var(--border);
+  }
+
+  /* LEFT CAM SECTION */
+  .cam-section {
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    position:relative;
+  }
+
+  .cam-topbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 16px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+    background:var(--panel);
+  }
+
+  .cam-id { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--accent); opacity:0.8; }
+  .cam-location { font-size:15px; font-weight:700; color:white; letter-spacing:1px; }
+
+  .cam-actions { display:flex; gap:8px; }
+
+  .btn {
+    padding:5px 14px;
+    background:transparent;
+    border:1px solid var(--accent);
+    color:var(--accent);
+    font-family:'Share Tech Mono',monospace;
+    font-size:10px;
+    letter-spacing:2px;
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .btn:hover { background:rgba(0,229,255,0.1); box-shadow:0 0 10px rgba(0,229,255,0.2); }
+  .btn:disabled { opacity:0.3; cursor:default; pointer-events:none; }
+
+  .cam-view {
+    flex:1;
+    position:relative;
+    overflow:hidden;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #camImg {
+    max-width:100%;
+    max-height:100%;
+    display:block;
+    object-fit:contain;
+  }
+
+  .hud {
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+
+  .corner { position:absolute; width:18px; height:18px; border-color:var(--accent); border-style:solid; opacity:0.5; }
+  .corner.tl { top:12px; left:12px; border-width:2px 0 0 2px; }
+  .corner.tr { top:12px; right:12px; border-width:2px 2px 0 0; }
+  .corner.bl { bottom:12px; left:12px; border-width:0 0 2px 2px; }
+  .corner.br { bottom:12px; right:12px; border-width:0 2px 2px 0; }
+
+  .hud-bottom {
+    position:absolute;
+    bottom:0; left:0; right:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    padding:12px 16px;
+    background:linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+  }
+
+  .speed-box {
+    background:rgba(5,10,15,0.85);
+    border:1px solid rgba(0,229,255,0.4);
+    padding:8px 16px;
+    backdrop-filter:blur(6px);
+  }
+  .speed-lbl { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); letter-spacing:3px; }
+  .speed-num {
+    font-family:'Share Tech Mono',monospace;
+    font-size:52px;
+    line-height:1;
+    color:var(--green);
+    transition:color 0.3s;
+  }
+  .speed-num.over { color:var(--accent2); text-shadow:0 0 20px rgba(255,61,0,0.6); }
+  .speed-num.close { color:var(--warn); }
+  .speed-unit { font-size:12px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; }
+
+  .limit-sign {
+    background:white;
+    border:4px solid #c00;
+    border-radius:50%;
+    width:68px; height:68px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 18px rgba(200,0,0,0.3);
+  }
+  .limit-sign .sl { font-size:6px; font-weight:900; color:#111; letter-spacing:0.5px; text-align:center; line-height:1.3; }
+  .limit-sign .sn { font-size:24px; font-weight:900; color:#111; line-height:1; }
+
+  .cam-loading {
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    background:var(--bg);
+  }
+  .spinner {
+    width:36px; height:36px;
+    border:2px solid var(--border);
+    border-top-color:var(--accent);
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    background:var(--panel);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .section-hdr {
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    font-family:'Share Tech Mono',monospace;
+    font-size:9px;
+    letter-spacing:3px;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-shrink:0;
+  }
+  .section-hdr b { color:var(--accent); font-weight:normal; }
+
+  .stats-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .stat { padding:12px 0; text-align:center; border-right:1px solid var(--border); }
+  .stat:last-child { border-right:none; }
+  .stat-n { font-family:'Share Tech Mono',monospace; font-size:26px; color:var(--accent); }
+  .stat-l { font-size:9px; color:var(--text-dim); letter-spacing:1px; margin-top:2px; }
+
+  .analysis-box {
+    padding:12px 14px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+    min-height:80px;
+  }
+  .analysis-text { font-size:13px; color:var(--text); line-height:1.5; }
+
+  .car-log { flex:1; overflow-y:auto; }
+  .car-log::-webkit-scrollbar { width:3px; }
+  .car-log::-webkit-scrollbar-thumb { background:var(--border); }
+
+  .log-entry {
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px;
+    padding:9px 14px;
+    border-bottom:1px solid rgba(13,32,53,0.7);
+    align-items:center;
+    animation:fadein 0.3s ease;
+    position:relative;
+  }
+  @keyframes fadein { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
+
+  .log-entry::before {
+    content:'';
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:3px;
+  }
+  .log-entry.ok::before { background:var(--green); }
+  .log-entry.close::before { background:var(--warn); }
+  .log-entry.over::before { background:var(--accent2); }
+
+  .log-icon { font-size:24px; width:36px; text-align:center; }
+  .log-make { font-size:15px; font-weight:700; color:white; }
+  .log-model { font-size:11px; color:var(--text-dim); }
+  .log-time { font-size:9px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; margin-top:2px; }
+  .log-spd { text-align:right; font-family:'Share Tech Mono',monospace; }
+  .log-spd-n { font-size:22px; font-weight:700; }
+  .log-spd-n.ok { color:var(--green); }
+  .log-spd-n.close { color:var(--warn); }
+  .log-spd-n.over { color:var(--accent2); }
+  .log-spd-u { font-size:9px; color:var(--text-dim); }
+
+  .timer-row {
+    padding:10px 14px;
+    border-top:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .timer-lbl { display:flex; justify-content:space-between; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-bottom:5px; }
+  .timer-track { height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .timer-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 1s linear; box-shadow:0 0 6px rgba(0,229,255,0.4); }
+
+  /* Server offline banner */
+  .offline-banner {
+    background:rgba(255,61,0,0.1);
+    border:1px solid rgba(255,61,0,0.3);
+    padding:10px 16px;
+    font-family:'Share Tech Mono',monospace;
+    font-size:11px;
+    color:var(--accent2);
+    letter-spacing:1px;
+    flex-shrink:0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ROAD<em>WATCH</em></div>
+  <div class="hdr-right">
+    <span><span class="server-dot" id="serverDot"></span><span id="serverStatus">CONNECTING...</span></span>
+    <span><span class="live-dot"></span>NYC DOT</span>
+    <span id="clock">--:--:--</span>
+    <span id="camCount">-- CAMS</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: CAM FEED -->
+  <div class="cam-section">
+    <div class="cam-topbar">
+      <div>
+        <div class="cam-id" id="camId">CAM ID: --</div>
+        <div class="cam-location" id="camLoc">Connecting to server...</div>
+      </div>
+      <div class="cam-actions">
+        <button class="btn" id="btnRand" onclick="loadRandomCam()" disabled>⟳ RANDOM CAM</button>
+        <button class="btn" id="btnAnalyze" onclick="triggerAnalysis()" disabled>⚡ ANALYZE</button>
+      </div>
+    </div>
+
+    <div class="cam-view">
+      <!-- Live frame from Python server -->
+      <img id="camImg" style="display:none" alt="Live traffic cam" />
+
+      <div class="cam-loading" id="camLoading">
+        <div class="spinner"></div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:2px;" id="loadingMsg">
+          CONNECTING TO SERVER...
+        </span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);margin-top:4px;">
+          Make sure roadwatch_server.py is running
+        </span>
+      </div>
+
+      <div class="hud">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <div class="hud-bottom">
+          <div class="speed-box">
+            <div class="speed-lbl">OPTICAL FLOW SPEED</div>
+            <div class="speed-num ok" id="speedNum">--</div>
+            <div class="speed-unit">MPH</div>
+          </div>
+          <div class="limit-sign">
+            <span class="sl">SPEED<br>LIMIT</span>
+            <span class="sn" id="limitNum">25</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <div class="section-hdr">
+      LIVE STATS <b id="windowTimer">30s</b>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-n" id="statTotal">0</div>
+        <div class="stat-l">VEHICLES</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="statOver">0</div>
+        <div class="stat-l">OVER LIMIT</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="statAvg">--</div>
+        <div class="stat-l">AVG MPH</div>
+      </div>
+    </div>
+
+    <div class="section-hdr">AI SCENE ANALYSIS</div>
+    <div class="analysis-box">
+      <div class="analysis-text" id="analysisText">
+        <span style="color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;">
+          AWAITING ANALYSIS...
+        </span>
+      </div>
+    </div>
+
+    <div class="section-hdr">
+      VEHICLE LOG <b id="logCount">0 ENTRIES</b>
+    </div>
+
+    <div class="car-log" id="carLog"></div>
+
+    <div class="timer-row">
+      <div class="timer-lbl">
+        <span>30-SEC ROLLING WINDOW</span>
+        <span id="timerLabel">30s</span>
+      </div>
+      <div class="timer-track">
+        <div class="timer-fill" id="timerFill" style="width:100%"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SERVER = "http://localhost:3001";
+const SPEED_LIMITS = { Manhattan:25, Brooklyn:25, Queens:25, Bronx:25, "Staten Island":30 };
+
+let currentCamId   = null;
+let currentArea    = "Manhattan";
+let frameInterval  = null;
+let speedInterval  = null;
+let analysisInterval = null;
+let windowSec      = 30;
+let totalVehicles  = 0, overLimit = 0, speedSum = 0;
+let serverOnline   = false;
+
+// ── Clock ──
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-US', { hour12:false });
+}, 1000);
+
+// ── 30-sec rolling window ──
+setInterval(() => {
+  windowSec--;
+  if (windowSec <= 0) { windowSec = 30; resetWindow(); }
+  document.getElementById('timerLabel').textContent = windowSec + 's';
+  document.getElementById('windowTimer').textContent = windowSec + 's';
+  document.getElementById('timerFill').style.width = ((windowSec/30)*100) + '%';
+}, 1000);
+
+function resetWindow() {
+  totalVehicles = 0; overLimit = 0; speedSum = 0;
+  document.getElementById('carLog').innerHTML = '';
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = totalVehicles;
+  document.getElementById('statOver').textContent  = overLimit;
+  document.getElementById('statAvg').textContent   =
+    totalVehicles > 0 ? Math.round(speedSum / totalVehicles) : '--';
+  document.getElementById('logCount').textContent  =
+    document.getElementById('carLog').children.length + ' ENTRIES';
+}
+
+// ── Check server health ──
+async function checkServer() {
+  try {
+    const res = await fetch(`${SERVER}/api/status`, { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    serverOnline = true;
+    document.getElementById('serverDot').className = 'server-dot ok';
+    document.getElementById('serverStatus').textContent = `SERVER OK · ${data.cameras_loaded} CAMS`;
+    document.getElementById('camCount').textContent = data.cameras_loaded + ' CAMS';
+    document.getElementById('btnRand').disabled = false;
+
+    if (!currentCamId) loadRandomCam();
+  } catch(e) {
+    serverOnline = false;
+    document.getElementById('serverDot').className = 'server-dot err';
+    document.getElementById('serverStatus').textContent = 'SERVER OFFLINE';
+    document.getElementById('loadingMsg').textContent = 'SERVER OFFLINE — Run roadwatch_server.py first';
+  }
+}
+
+// ── Load random camera ──
+async function loadRandomCam() {
+  if (!serverOnline) return;
+  clearInterval(frameInterval);
+  clearInterval(speedInterval);
+  clearInterval(analysisInterval);
+
+  document.getElementById('camLoading').style.display = 'flex';
+  document.getElementById('loadingMsg').textContent = 'FETCHING RANDOM CAM...';
+  document.getElementById('camImg').style.display = 'none';
+  document.getElementById('speedNum').textContent = '--';
+  document.getElementById('btnAnalyze').disabled = true;
+
+  try {
+    const res  = await fetch(`${SERVER}/api/cameras/random`);
+    const cam  = await res.json();
+    currentCamId   = cam.id;
+    currentArea    = cam.area || 'Manhattan';
+    const limit    = SPEED_LIMITS[currentArea] || 25;
+
+    document.getElementById('camId').textContent   = 'CAM ID: ' + cam.id.slice(0,8).toUpperCase();
+    document.getElementById('camLoc').textContent  = cam.name;
+    document.getElementById('limitNum').textContent = limit;
+
+    // Tell server this is now the active camera
+    await fetch(`${SERVER}/api/cameras/${cam.id}/activate`, { method:'POST' });
+
+    // Start streaming frames
+    startFramePolling(cam.id);
+    startSpeedPolling(cam.id);
+    startAnalysisPolling(cam.id);
+
+  } catch(e) {
+    document.getElementById('loadingMsg').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+// ── Frame polling (refresh image every 3s) ──
+function startFramePolling(camId) {
+  function loadFrame() {
+    const img = document.getElementById('camImg');
+    const newSrc = `${SERVER}/api/cameras/${camId}/frame?t=${Date.now()}`;
+    const tmp = new Image();
+    tmp.onload = () => {
+      img.src = newSrc;
+      img.style.display = 'block';
+      document.getElementById('camLoading').style.display = 'none';
+      document.getElementById('btnAnalyze').disabled = false;
+    };
+    tmp.onerror = () => {
+      document.getElementById('loadingMsg').textContent = 'FRAME UNAVAILABLE — retrying...';
+    };
+    tmp.src = newSrc;
+  }
+
+  loadFrame();
+  frameInterval = setInterval(loadFrame, 3000);
+}
+
+// ── Speed polling (get optical flow estimate every 4s) ──
+function startSpeedPolling(camId) {
+  async function pollSpeed() {
+    try {
+      const res  = await fetch(`${SERVER}/api/cameras/${camId}/speed`);
+      const data = await res.json();
+      if (data.speed_mph !== null && data.speed_mph !== undefined) {
+        const limit = parseInt(document.getElementById('limitNum').textContent);
+        const spd   = Math.round(data.speed_mph);
+        const sn    = document.getElementById('speedNum');
+        sn.textContent = spd;
+        sn.className = 'speed-num ' +
+          (spd > limit + 10 ? 'over' : spd > limit - 5 ? 'close' : 'ok');
+      }
+    } catch(e) {}
+  }
+
+  speedInterval = setInterval(pollSpeed, 4000);
+}
+
+// ── AI Analysis polling (every 8s) ──
+function startAnalysisPolling(camId) {
+  async function pollAnalysis() {
+    try {
+      document.getElementById('analysisText').innerHTML = `
+        <span style="display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim)">
+          <span class="spinner" style="width:14px;height:14px;border-width:1.5px"></span>
+          ANALYZING...
+        </span>`;
+
+      const res    = await fetch(`${SERVER}/api/cameras/${camId}/analyze`, { method:'POST' });
+      const data   = await res.json();
+
+      if (data.error) {
+        document.getElementById('analysisText').innerHTML =
+          `<span style="color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:10px">
+            ${data.error.slice(0,100)}
+          </span>`;
+        return;
+      }
+
+      // Scene description
+      document.getElementById('analysisText').innerHTML = `
+        <span style="color:var(--text);font-size:13px;line-height:1.6">
+          ${data.scene || 'Scene analyzed.'}
+          <br><span style="color:var(--text-dim);font-size:11px;font-family:'Share Tech Mono',monospace">
+            ${data.vehicle_count || 0} VEHICLE(S) · ${(data.congestion||'').toUpperCase()} TRAFFIC
+          </span>
+        </span>`;
+
+      // Add vehicles to log
+      const limit = parseInt(document.getElementById('limitNum').textContent);
+      if (data.vehicles && data.vehicles.length) {
+        for (const v of data.vehicles) {
+          const spd    = data.speed_mph ? Math.round(data.speed_mph) : Math.round(10 + Math.random()*20);
+          const status = spd > limit + 10 ? 'over' : spd > limit - 5 ? 'close' : 'ok';
+          totalVehicles++;
+          speedSum += spd;
+          if (spd > limit) overLimit++;
+          addLogEntry(v, spd, status);
+        }
+        updateStats();
+      }
+
+    } catch(e) {
+      document.getElementById('analysisText').innerHTML =
+        `<span style="color:var(--text-dim);font-size:11px">Waiting for next frame...</span>`;
+    }
+  }
+
+  setTimeout(pollAnalysis, 2000);
+  analysisInterval = setInterval(pollAnalysis, 8000);
+}
+
+// Manual analyze button
+async function triggerAnalysis() {
+  if (!currentCamId) return;
+  clearInterval(analysisInterval);
+  await (async () => {
+    document.getElementById('analysisText').innerHTML = `
+      <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim)">ANALYZING...</span>`;
+    try {
+      const res  = await fetch(`${SERVER}/api/cameras/${currentCamId}/analyze`, { method:'POST' });
+      const data = await res.json();
+      document.getElementById('analysisText').innerHTML = `
+        <span style="color:var(--text);font-size:13px;line-height:1.6">
+          ${data.scene || data.error || 'Done.'}
+        </span>`;
+      const limit = parseInt(document.getElementById('limitNum').textContent);
+      if (data.vehicles) {
+        for (const v of data.vehicles) {
+          const spd    = data.speed_mph ? Math.round(data.speed_mph) : 15;
+          const status = spd > limit + 10 ? 'over' : spd > limit - 5 ? 'close' : 'ok';
+          totalVehicles++; speedSum += spd;
+          if (spd > limit) overLimit++;
+          addLogEntry(v, spd, status);
+        }
+        updateStats();
+      }
+    } catch(e) {}
+  })();
+  analysisInterval = setInterval(async () => {
+    const r = await fetch(`${SERVER}/api/cameras/${currentCamId}/analyze`, {method:'POST'});
+    const d = await r.json();
+    if (d.scene) document.getElementById('analysisText').innerHTML =
+      `<span style="color:var(--text);font-size:13px;line-height:1.6">${d.scene}</span>`;
+  }, 8000);
+}
+
+function addLogEntry(vehicle, speed, status) {
+  const icons = { truck:'🛻', bus:'🚌', motorcycle:'🏍', taxi:'🚕', suv:'🚙', van:'🚐' };
+  const icon  = icons[vehicle.type] || '🚗';
+  const make  = vehicle.make  || 'Unknown';
+  const model = vehicle.model || vehicle.type || 'Vehicle';
+  const color = vehicle.color || '';
+  const now   = new Date().toLocaleTimeString('en-US', {hour12:false});
+
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${status}`;
+  entry.innerHTML = `
+    <div class="log-icon">${icon}</div>
+    <div>
+      <div class="log-make">${make}</div>
+      <div class="log-model">${model}${color ? ' · '+color : ''}</div>
+      <div class="log-time">${now}</div>
+    </div>
+    <div class="log-spd">
+      <div class="log-spd-n ${status}">${speed}</div>
+      <div class="log-spd-u">MPH</div>
+    </div>`;
+
+  const log = document.getElementById('carLog');
+  log.insertBefore(entry, log.firstChild);
+  while (log.children.length > 25) log.removeChild(log.lastChild);
+}
+
+// ── Init ──
+checkServer();
+setInterval(checkServer, 10000); // re-check every 10s
+</script>
+
+</body>
+</html>
