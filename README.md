@@ -1,98 +1,159 @@
-🚦 ROADWATCH — Live Traffic Intelligence Dashboard
-A real-time traffic camera dashboard that pulls live feeds from NYC's public camera network, blurs license plates for privacy, estimates vehicle speeds using optical flow analysis, and uses Google Gemini AI to identify vehicle make, model, color, and direction — all displayed on a sleek live dashboard.
+🚦 ROADWATCH — Real-Time Traffic Intelligence Dashboard
 
-📸 What It Does
-Every 3 seconds, the server fetches a live JPEG snapshot from a real NYC DOT traffic camera. Before the image ever reaches your browser, OpenCV automatically blurs the lower portion of the frame where license plates appear. The frame is then analyzed by Google Gemini which returns structured data about every vehicle in the shot — type, make, model, color, and direction of travel. Simultaneously, optical flow analysis compares consecutive frames to estimate how fast vehicles are moving in MPH. All of this feeds into a live dashboard that tracks a 30-second rolling window of vehicle activity.
+A real-time traffic analytics platform that streams live NYC DOT traffic cameras, applies privacy-preserving computer vision, estimates vehicle speed using optical flow, and leverages Google Gemini AI to classify vehicle attributes — all displayed in a live interactive dashboard.
 
-✨ Features
+📸 Overview
 
-🎥 900+ Live Cameras — Real NYC DOT traffic cameras across all 5 boroughs, updating every 2-3 seconds, completely free with no API key required
-🔒 License Plate Privacy — Every frame is processed server-side with OpenCV Gaussian blur on the plate zone before being sent to the browser
-📏 Speed Estimation — Farneback optical flow compares consecutive frames and converts pixel displacement to MPH
-🤖 AI Vehicle Detection — Google Gemini Vision identifies vehicle type, make, model, color, and direction of travel
-📊 30-Second Rolling Stats — Tracks total vehicles, over-limit count, and average speed in a live rolling window
-🗺️ Random Camera Button — Instantly jump to any of 900+ cameras across NYC
-🖥️ Live Dashboard — Real-time feed with HUD overlays, speed display, speed limit sign, and vehicle log
+ROADWATCH continuously:
 
+Pulls live JPEG snapshots from NYC DOT public cameras (900+ across all 5 boroughs)
+
+Applies server-side license plate blurring using OpenCV
+
+Estimates vehicle speed using Farneback optical flow
+
+Uses Google Gemini Vision to identify:
+
+Vehicle type
+
+Make & model
+
+Color
+
+Direction of travel
+
+Displays a live 30-second rolling analytics dashboard
+
+All processing occurs server-side before images are sent to the browser.
+
+✨ Key Features
+
+🎥 900+ Live NYC Cameras (no API key required)
+
+🔒 Privacy-First Processing — license plate region blurred server-side
+
+📏 Speed Estimation — Optical flow → pixel displacement → MPH conversion
+
+🤖 AI Vehicle Classification — Gemini Vision structured analysis
+
+📊 30-Second Rolling Analytics Window
+
+🗺️ Random Camera Selection
+
+🖥️ Live HUD Dashboard UI
 
 🗂️ Project Structure
 CarCam/
-├── roadwatch_server.py       # Python Flask backend
-├── roadwatch_dashboard.html  # Frontend dashboard (HTML/CSS/JS)
-├── .env                      # Your API keys (never pushed to GitHub)
-├── .gitignore                # Protects .env and other sensitive files
-└── README.md                 # This file
-
+├── roadwatch_server.py        # Flask backend server
+├── roadwatch_dashboard.html   # Frontend dashboard
+├── .env                       # API keys (never committed)
+├── .gitignore                 # Prevents secret leakage
+└── README.md
 🛠️ Tech Stack
-LayerTechnologyBackendPython, Flask, Flask-CORSComputer VisionOpenCV (plate blur + optical flow)AI DetectionGoogle Gemini 2.0 Flash (free tier)Camera FeedNYC DOT Public API (no key needed)FrontendHTML, CSS, JavaScriptImage ProcessingPillow, NumPy
-
+Layer	Technology
+Backend	Python, Flask, Flask-CORS
+Computer Vision	OpenCV (Gaussian blur, Farneback optical flow)
+AI Detection	Google Gemini 2.0 Flash
+Image Processing	Pillow, NumPy
+Camera Feed	NYC DOT Public Traffic API
+Frontend	HTML, CSS, JavaScript
 ⚙️ Setup & Installation
-1. Clone the repository
-bashgit clone https://github.com/mohammedbharoocha0930/CarCam.git
+1️⃣ Clone the Repository
+git clone https://github.com/mohammedbharoocha0930/CarCam.git
 cd CarCam
-2. Install dependencies
-bashpip install flask flask-cors requests opencv-python numpy Pillow google-generativeai python-dotenv
-```
+2️⃣ Install Dependencies
+pip install flask flask-cors requests opencv-python numpy Pillow google-generativeai python-dotenv
+🔑 Get a Free Gemini API Key
 
-### 3. Get a FREE Gemini API key
-1. Go to [aistudio.google.com](https://aistudio.google.com)
-2. Sign in with your Google account
-3. Click **Get API Key** → **Create API Key**
-4. Copy the key — it starts with `AIza...`
-5. No credit card required — completely free
+Visit https://aistudio.google.com
 
-### 4. Create your `.env` file
-Create a file called `.env` in the `CarCam/` folder and add:
-```
-GEMINI_API_KEY=AIzaYourKeyHere
+Click Get API Key
 
-⚠️ Never share this file. It is already blocked from GitHub by .gitignore
+Create a new key
 
-5. Run the backend server
-bashpython roadwatch_server.py
-```
-Wait until you see:
-```
+Copy the key (starts with AIza...)
+
+No credit card required (free tier available).
+
+🔒 Create Your .env File
+
+Inside the CarCam/ folder:
+
+GEMINI_API_KEY=your_key_here
+
+⚠️ .env is excluded from Git via .gitignore.
+Never commit your API key.
+
+▶️ Run the Backend
+python roadwatch_server.py
+
+Expected output:
+
 ROADWATCH Server running on http://localhost:3001
-Cameras loaded: 949
+Cameras loaded: 900+
 Gemini key: SET ✓
-6. Serve the frontend
-Open a second terminal and run:
-bashpython -m http.server 8080
-```
+🌐 Serve the Frontend
 
-### 7. Open the dashboard
-Go to your browser and visit:
-```
+In a second terminal:
+
+python -m http.server 8080
+
+Then open:
+
 http://localhost:8080/roadwatch_dashboard.html
-The green dot in the top left confirms the server is connected. Hit RANDOM CAM to load a live feed.
+
+Green status indicator = server connected.
 
 🔌 API Endpoints
-MethodEndpointDescriptionGET/api/statusServer health checkGET/api/camerasList all 900+ online camerasGET/api/cameras/randomGet a random online cameraPOST/api/cameras/<id>/activateSet the active camera for pollingGET/api/cameras/<id>/frameGet latest plate-blurred JPEG frameGET/api/cameras/<id>/speedGet optical flow speed estimate in MPHPOST/api/cameras/<id>/analyzeRun Gemini AI analysis on current frame
-
-📡 Camera Sources
-SourceCoverageAPI KeyNYC DOTNew York City (900+ cams)❌ Not required511 NYNew York State✅ Free registrationCA DOTCalifornia❌ Not requiredFL 511Florida✅ Free registrationTX DOTTexas✅ Free registration
-
+Method	Endpoint	Description
+GET	/api/status	Server health check
+GET	/api/cameras	List available cameras
+GET	/api/cameras/random	Random camera selection
+POST	/api/cameras/<id>/activate	Set active camera
+GET	/api/cameras/<id>/frame	Latest blurred frame
+GET	/api/cameras/<id>/speed	Speed estimate (MPH)
+POST	/api/cameras/<id>/analyze	Run Gemini AI analysis
 🚀 How Speed Detection Works
 
-The server fetches a new frame every 3 seconds
-Each frame is converted to grayscale
-OpenCV Farneback optical flow compares current frame to previous
-Magnitude of pixel movement is calculated across the frame
-90th percentile of displacement is used to ignore background noise
-Pixel displacement is converted to MPH using a pixel-to-meter ratio
-Result is served via /api/cameras/<id>/speed
+Fetch frame every 3 seconds
 
+Convert to grayscale
 
-🔒 Privacy
+Apply Farneback optical flow
 
-License plates are blurred server-side before frames reach the browser
-No footage is stored or recorded — frames are processed in memory only
-No personal data is collected
+Compute pixel displacement magnitude
 
+Use 90th percentile to reduce background noise
 
+Convert displacement → MPH via calibrated pixel-to-meter ratio
+
+Return speed via API endpoint
+
+🔒 Privacy & Security
+
+License plates blurred before leaving server
+
+No frame storage (in-memory processing only)
+
+No personal data collection
+
+API keys secured via environment variables
+
+.env excluded from Git tracking
+
+📡 Camera Sources
+Source	Coverage	API Key
+NYC DOT	New York City (900+)	❌ Not required
+511 NY	New York State	✅ Free
+CA DOT	California	❌ Not required
+FL 511	Florida	✅ Free
+TX DOT	Texas	✅ Free
 📄 License
-MIT — free to use, modify, and distribute.
+
+MIT License — free to use and modify.
 
 👤 Author
-Built by Mohammed Bharoocha
+
+Mohammed Bharoocha
+B.A. Computer Science — Florida International University
+Software Engineering | Backend Systems | Computer Vision | AI Integration
