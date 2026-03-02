@@ -1,0 +1,25 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Package build files
+*.egg-info/
+dist/
+build/
+
+# PyCharm
+.idea/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log
